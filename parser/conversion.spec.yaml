@@ -1,0 +1,15 @@
+Module: parser
+Profile: VHDXProfile
+Filename: vhdx.json
+GenerateDebugString: true
+Structs:
+  - FileType
+  - Header
+  - Region
+  - RegionEntry
+  - BATEntry
+  - Metadata
+  - MetadataEntry
+  - FileParameters
+  - GUID
+  - Misc

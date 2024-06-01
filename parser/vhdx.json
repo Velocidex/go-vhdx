@@ -1,0 +1,58 @@
+{
+    "FileType": [520, {
+        "Signature": [0, ["String", {"length": 8}]],
+        "Creator": [8, ["UnicodeString"]],
+        "Header1": [65536, ["Header"]],
+        "Header2": [131072, ["Header"]],
+        "Region1": [196608, ["Region"]],
+        "Region2": [262144, ["Region"]]
+    }],
+    "Header": [4096, {
+        "Signature": [0, ["String", {"length": 4}]],
+        "SequenceNumber": [8, ["unsigned long long"]]
+    }],
+    "Region": [16, {
+        "Signature": [0, ["String", {"length": 4}]],
+        "EntryCount": [8, ["unsigned long"]]
+    }],
+    "RegionEntry": [32, {
+        "GUID": [0, ["String", {"length": 16}]],
+        "FileOffset": [16, ["unsigned long long"]],
+        "Length": [24, ["unsigned long"]],
+        "IsRequired": [28, ["unsigned long"]]
+    }],
+    "BATEntry": [8, {
+        "State": [0, ["BitField", {"start_bit": 0, "end_bit": 3}]],
+        "FileOffsetMB": [0, ["BitField",
+                             {"start_bit": 20,
+                              "end_bit": 63,
+                              "target": "unsigned long long"}]]
+    }],
+    "Metadata": [0, {
+        "Signature": [0, ["String", {"length": 8}]],
+        "EntryCount": [10, ["unsigned short"]],
+        "Entries": [32, ["Array", {"target": "MetadataEntry"}]]
+    }],
+    "MetadataEntry": [32, {
+        "GUID": [0, ["String", {"length": 16}]],
+        "MetadataOffset": [16, ["unsigned long"]],
+        "Length": [20, ["unsigned long"]]
+    }],
+    "FileParameters": [8, {
+        "BlockSize": [0, ["unsigned long"]],
+        "HasParent": [4, ["BitField", {"start_bit": 1, "end_bit": 2}]]
+    }],
+    "GUID": [16, {
+        "Data1": [0, ["unsigned long", {}]],
+        "Data2": [4, ["unsigned short", {}]],
+        "Data3": [6, ["unsigned short", {}]],
+        "Data4": [8, ["Array", {
+            "count": 8,
+            "target": "unsigned char"
+        }]]
+    }],
+    "Misc": [0, {
+        "Regions": [0, ["Array", {"target": "RegionEntry"}]],
+        "Bats": [0, ["Array", {"target": "BATEntry"}]]
+    }]
+}
