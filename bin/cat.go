@@ -13,6 +13,10 @@ var (
 	cat_command_file = cat_command.Arg(
 		"file", "The image file to inspect",
 	).Required().OpenFile(os.O_RDONLY, os.FileMode(0666))
+
+	cat_command_start = cat_command.Flag(
+		"start", "The start offset",
+	).Uint64()
 )
 
 func doCat() {
@@ -24,7 +28,7 @@ func doCat() {
 	kingpin.FatalIfError(err, "Can not open file")
 
 	buff := make([]byte, 1024*1024*10)
-	offset := uint64(0)
+	offset := uint64(*cat_command_start)
 	for offset < file_obj.Metadata.VirtualDiskSize {
 		to_read := uint64(len(buff))
 		if offset+to_read > file_obj.Metadata.VirtualDiskSize {
@@ -38,6 +42,7 @@ func doCat() {
 		offset += uint64(n)
 	}
 }
+
 func init() {
 	command_handlers = append(command_handlers, func(command string) bool {
 		switch command {

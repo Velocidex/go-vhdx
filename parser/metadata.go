@@ -4,7 +4,7 @@ type VHDXMetadata struct {
 	BlockSize          uint64
 	HasParent          bool
 	VirtualDiskSize    uint64
-	LogicalSectorSize  uint32
+	LogicalSectorSize  uint64
 	PhysicalSectorSize uint32
 	VirtualDiskId      string
 }
@@ -30,8 +30,8 @@ func (self *Metadata) ParseMetadata() *VHDXMetadata {
 				self.Offset+int64(e.MetadataOffset()))
 
 		case MetadataLogicalSectorSize:
-			result.LogicalSectorSize = ParseUint32(self.Reader,
-				self.Offset+int64(e.MetadataOffset()))
+			result.LogicalSectorSize = uint64(ParseUint32(self.Reader,
+				self.Offset+int64(e.MetadataOffset())))
 
 		case MetadataPhysicalSectorSize:
 			result.PhysicalSectorSize = ParseUint32(self.Reader,
