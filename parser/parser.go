@@ -76,8 +76,19 @@ func NewVHDXFile(reader io.ReaderAt) (*VHDXFile, error) {
 			self.Metadata.VirtualDiskSize)
 	}
 
+	if self.Metadata.LogicalSectorSize <= 0 {
+		return nil, fmt.Errorf("LogicalSectorSize invalid: %v",
+			self.Metadata.LogicalSectorSize)
+	}
+
 	self.bat_reader.BlockSize = self.Metadata.BlockSize
 	self.bat_reader.Size = self.Metadata.VirtualDiskSize
+	self.bat_reader.EntriesPerChunk = (1 << 23) * self.Metadata.LogicalSectorSize / self.Metadata.BlockSize
+
+	if self.bat_reader.EntriesPerChunk == 0 {
+		return nil, fmt.Errorf("EntriesPerChunk invalid: %v",
+			self.bat_reader.EntriesPerChunk)
+	}
 
 	// Now parse the BAT and build the reader.
 	for i, b := range self.bat {

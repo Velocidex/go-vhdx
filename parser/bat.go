@@ -10,10 +10,11 @@ type BatRange struct {
 }
 
 type BatReader struct {
-	mu        sync.Mutex
-	BlockSize uint64
-	Size      uint64
-	Reader    io.ReaderAt
+	mu              sync.Mutex
+	BlockSize       uint64
+	EntriesPerChunk uint64
+	Size            uint64
+	Reader          io.ReaderAt
 
 	bat map[int]*BatRange
 }
@@ -35,13 +36,26 @@ func (self *BatReader) ReadAt(buff []byte, off int64) (int, error) {
 func (self *BatReader) readPartial(buff []byte, off int64) (int, error) {
 	self.mu.Lock()
 	block := int(uint64(off) / self.BlockSize)
+
+	// Calculate the element index.
+	//
+	// The BAT array is divided into a list of chunks. Each chunk
+	// contains some payload blocks and one single sector block: See
+	// https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-vhdx/af7334e6-ad2c-4378-9b81-afc1334a6ee7
+	//
+	// This means that each chunk contain 1 less than the full number
+	// of blocks that can fit in it (to allow for one sector block).
+	// So we calculate the element index by adding one extra index per
+	// chunk.
+	element_index := uint64(block) + uint64(block)/self.EntriesPerChunk
+
 	block_offset := uint64(off) % self.BlockSize
 	to_read := int(self.BlockSize - block_offset)
 	if to_read > len(buff) {
 		to_read = len(buff)
 	}
 
-	bat_range, pres := self.bat[block]
+	bat_range, pres := self.bat[int(element_index)]
 	self.mu.Unlock()
 
 	if !pres {
