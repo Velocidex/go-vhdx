@@ -13,7 +13,6 @@ type VHDXFile struct {
 	header  *FileType
 
 	regions  []*RegionEntry
-	bat      []*BATEntry
 	Metadata *VHDXMetadata
 
 	// Expose this reader to our callers: Reassemble the reader from
@@ -33,7 +32,6 @@ func NewVHDXFile(reader io.ReaderAt) (*VHDXFile, error) {
 		header:  profile.FileType(reader, 0),
 		bat_reader: &BatReader{
 			Reader: reader,
-			bat:    make(map[int]*BatRange),
 		},
 	}
 
@@ -46,12 +44,18 @@ func NewVHDXFile(reader io.ReaderAt) (*VHDXFile, error) {
 	self.regions = ParseArray_RegionEntry(profile, reader,
 		region.Offset+int64(region.Size()), int(region.EntryCount()))
 
+	var bat *Bat
+
 	for _, r := range self.regions {
 		switch r.GUID() {
 		case BAT_GUID:
-			bat_entries := ParseArray_BATEntry(profile, reader,
-				int64(r.FileOffset()), int(r.Length()/8))
-			self.bat = append(self.bat, bat_entries...)
+			bat = &Bat{
+				StartOffset:          r.FileOffset(),
+				EntrySize:            8,
+				TotalNumberOfEntries: uint64(r.Length() / 8),
+				profile:              profile,
+				reader:               reader,
+			}
 
 		case Metadata_GUID:
 			metadata := profile.Metadata(reader, int64(r.FileOffset()))
@@ -61,6 +65,10 @@ func NewVHDXFile(reader io.ReaderAt) (*VHDXFile, error) {
 
 			self.Metadata = metadata.ParseMetadata()
 		}
+	}
+
+	if bat == nil {
+		return nil, errors.New("No BAT found!")
 	}
 
 	if self.Metadata == nil {
@@ -81,23 +89,13 @@ func NewVHDXFile(reader io.ReaderAt) (*VHDXFile, error) {
 			self.Metadata.LogicalSectorSize)
 	}
 
+	self.bat_reader.bat = bat
 	self.bat_reader.BlockSize = self.Metadata.BlockSize
 	self.bat_reader.Size = self.Metadata.VirtualDiskSize
-	self.bat_reader.EntriesPerChunk = (1 << 23) * self.Metadata.LogicalSectorSize / self.Metadata.BlockSize
 
-	if self.bat_reader.EntriesPerChunk == 0 {
-		return nil, fmt.Errorf("EntriesPerChunk invalid: %v",
-			self.bat_reader.EntriesPerChunk)
-	}
-
-	// Now parse the BAT and build the reader.
-	for i, b := range self.bat {
-		switch b.State() {
-		case PAYLOAD_BLOCK_FULLY_PRESENT, PAYLOAD_BLOCK_PARTIALLY_PRESENT:
-			self.bat_reader.bat[i] = &BatRange{
-				FileOffset: b.FileOffsetMB() * 1024 * 1024,
-			}
-		}
+	bat.EntriesPerChunk = (1 << 23) * self.Metadata.LogicalSectorSize / self.Metadata.BlockSize
+	if bat.EntriesPerChunk == 0 {
+		return nil, fmt.Errorf("EntriesPerChunk invalid: %v", bat.EntriesPerChunk)
 	}
 
 	return self, nil
@@ -110,12 +108,7 @@ func (self *VHDXFile) DebugString() string {
 		result += fmt.Sprintf("GUID %02x\n", r.GUID())
 	}
 
-	for _, b := range self.bat {
-		switch b.State() {
-		case PAYLOAD_BLOCK_FULLY_PRESENT, PAYLOAD_BLOCK_PARTIALLY_PRESENT:
-			result += b.DebugString()
-		}
-	}
+	result += self.bat_reader.bat.DebugString()
 
 	if self.Metadata != nil {
 		result += fmt.Sprintf("Metadata: %#v\n", self.Metadata)
